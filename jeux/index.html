@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Village Ascendant</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="app">
+    <header class="hero">
+      <div>
+        <p class="eyebrow">Jeu de gestion local</p>
+        <h1>Village Ascendant</h1>
+        <p class="subtitle">
+          Faites grandir un petit village jusqu'a devenir une ville prospere.
+        </p>
+      </div>
+      <div class="hero-actions">
+        <button id="next-day-btn" class="primary-button">Jour suivant</button>
+        <button id="save-btn" class="secondary-button">Sauvegarder</button>
+        <button id="reset-btn" class="ghost-button">Reinitialiser</button>
+      </div>
+    </header>
+
+    <main class="layout">
+      <section class="panel summary-panel">
+        <div class="panel-title-row">
+          <h2>Etat du village</h2>
+          <span id="age-badge" class="badge">Age des pionniers</span>
+        </div>
+        <div class="stats-grid">
+          <article class="stat-card">
+            <span class="stat-label">Jour</span>
+            <strong id="day-value">1</strong>
+          </article>
+          <article class="stat-card">
+            <span class="stat-label">Population</span>
+            <strong id="population-value">0</strong>
+          </article>
+          <article class="stat-card">
+            <span class="stat-label">Logement</span>
+            <strong id="housing-value">0</strong>
+          </article>
+          <article class="stat-card">
+            <span class="stat-label">Niveau</span>
+            <strong id="level-value">1</strong>
+          </article>
+        </div>
+        <div id="resource-grid" class="resource-grid"></div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-title-row">
+          <h2>Batiments</h2>
+          <span class="hint">Construisez pour produire plus</span>
+        </div>
+        <div id="buildings-list" class="building-list"></div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-title-row">
+          <h2>Production du jour</h2>
+          <span class="hint">Resume avant le prochain tour</span>
+        </div>
+        <div id="production-summary" class="summary-list"></div>
+      </section>
+
+      <section class="panel event-panel">
+        <div class="panel-title-row">
+          <h2>Journal</h2>
+          <span class="hint">Evenements recents</span>
+        </div>
+        <div id="event-log" class="event-log"></div>
+      </section>
+    </main>
+  </div>
+
+  <template id="building-card-template">
+    <article class="building-card">
+      <div class="building-header">
+        <div>
+          <h3 class="building-name"></h3>
+          <p class="building-description"></p>
+        </div>
+        <span class="building-count"></span>
+      </div>
+      <div class="building-effects"></div>
+      <div class="building-cost"></div>
+      <button class="build-button">Construire</button>
+    </article>
+  </template>
+
+  <script src="script.js"></script>
+</body>
+</html>

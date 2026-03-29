@@ -90,6 +90,7 @@ const state = {
   particles: [],
   player: createPlayer(),
   lastFrame: 0,
+  inputLock: 0,
 };
 
 loadMeta();
@@ -160,6 +161,10 @@ function setupEvents() {
   ui.resumeButton.addEventListener("click", togglePause);
 
   window.addEventListener("keydown", (event) => {
+    if (["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", " "].includes(event.key) || event.code === "Space") {
+      event.preventDefault();
+    }
+
     if (event.key.toLowerCase() === "p") {
       togglePause();
       return;
@@ -259,6 +264,7 @@ function update(dt) {
   state.time += dt;
   state.speed = Math.min(topSpeed, baseSpeed + state.distance / 220);
   state.distance += state.speed * dt;
+  state.inputLock = Math.max(0, state.inputLock - dt);
 
   const player = state.player;
   player.animationTime += dt * (1.8 + state.speed * 0.03);
@@ -349,19 +355,19 @@ function addSegment(zStart) {
     scenery: createScenery(zStart),
   };
 
-  if (roll < 0.18) {
+  if (roll < 0.3) {
     segment.type = "coins";
     populateCoinRibbon(segment);
-  } else if (roll < 0.34) {
+  } else if (roll < 0.48) {
     segment.type = "switch";
     populateSwitchPattern(segment, difficulty);
-  } else if (roll < 0.52) {
+  } else if (roll < 0.62) {
     segment.type = "jump";
     populateJumpPattern(segment, difficulty);
-  } else if (roll < 0.68) {
+  } else if (roll < 0.74) {
     segment.type = "slide";
     populateSlidePattern(segment, difficulty);
-  } else if (roll < 0.82) {
+  } else if (roll < 0.86) {
     segment.type = "train";
     populateTrainPattern(segment, difficulty);
   } else {
@@ -369,7 +375,7 @@ function addSegment(zStart) {
     populateComboPattern(segment, difficulty);
   }
 
-  if (Math.random() < 0.18) {
+  if (Math.random() < 0.12) {
     addCoinsArc(segment, 1, zStart + 7, 5);
   }
 
@@ -395,7 +401,7 @@ function populateSwitchPattern(segment, difficulty) {
   segment.obstacles.push(createObstacle("signal", blockedLane, segment.z + 8, "switch"));
   addCoinsLane(segment, blockedLane === 0 ? 2 : 0, segment.z + 4, 5);
 
-  if (difficulty > 2 && Math.random() < 0.5) {
+  if (difficulty > 3 && Math.random() < 0.28) {
     const secondLane = blockedLane === 1 ? 2 : 1;
     segment.obstacles.push(createObstacle("crate", secondLane, segment.z + 13, "switch"));
   }
@@ -406,7 +412,7 @@ function populateJumpPattern(segment, difficulty) {
   segment.obstacles.push(createObstacle("barrierLow", lane, segment.z + 9, "jump"));
   addCoinsArc(segment, lane, segment.z + 9, 6);
 
-  if (difficulty > 1 && Math.random() < 0.5) {
+  if (difficulty > 2 && Math.random() < 0.24) {
     const altLane = lane === 1 ? 0 : 1;
     segment.coins.push(createCoin(altLane, segment.z + 7, 0.5));
     segment.coins.push(createCoin(altLane, segment.z + 9, 0.5));
@@ -418,7 +424,7 @@ function populateSlidePattern(segment, difficulty) {
   segment.obstacles.push(createObstacle("barrierHigh", lane, segment.z + 9, "slide"));
   addCoinsLane(segment, lane, segment.z + 5, 4, 0.38);
 
-  if (difficulty > 2 && Math.random() < 0.45) {
+  if (difficulty > 3 && Math.random() < 0.22) {
     const blockedLane = lane === 2 ? 0 : 2;
     segment.obstacles.push(createObstacle("signal", blockedLane, segment.z + 13, "switch"));
   }
@@ -430,7 +436,7 @@ function populateTrainPattern(segment, difficulty) {
   segment.obstacles.push(createObstacle("train", lane, segment.z + 10, "switch", length));
   addCoinsLane(segment, lane === 0 ? 1 : 0, segment.z + 4, 5);
 
-  if (difficulty > 3 && Math.random() < 0.55) {
+  if (difficulty > 4 && Math.random() < 0.28) {
     const secondLane = lane === 2 ? 1 : 2;
     segment.obstacles.push(createObstacle("barrierLow", secondLane, segment.z + 14, "jump"));
   }
@@ -439,8 +445,10 @@ function populateTrainPattern(segment, difficulty) {
 function populateComboPattern(segment, difficulty) {
   const baseLane = (Math.random() * 3) | 0;
   segment.obstacles.push(createObstacle("signal", baseLane, segment.z + 7, "switch"));
-  segment.obstacles.push(createObstacle("barrierLow", (baseLane + 1) % 3, segment.z + 11, "jump"));
   if (difficulty > 2) {
+    segment.obstacles.push(createObstacle("barrierLow", (baseLane + 1) % 3, segment.z + 11.5, "jump"));
+  }
+  if (difficulty > 4) {
     segment.obstacles.push(createObstacle("barrierHigh", baseLane === 0 ? 2 : 0, segment.z + 14.5, "slide"));
   }
   addCoinsLane(segment, 1, segment.z + 3, 7);
@@ -541,12 +549,13 @@ function getDifficultyTier() {
 }
 
 function changeLane(direction) {
-  if (state.mode !== "running") {
+  if (state.mode !== "running" || state.inputLock > 0) {
     return;
   }
   const nextLane = Math.max(0, Math.min(2, state.player.targetLane + direction));
   if (nextLane !== state.player.targetLane) {
     state.player.targetLane = nextLane;
+    state.inputLock = 0.07;
     pulseCombo(direction < 0 ? "Dash gauche" : "Dash droite", 0.45);
     playSound(280, 0.045, "square");
   }
@@ -573,8 +582,8 @@ function slide() {
 }
 
 function evaluateObstacle(obstacle) {
-  const playerLane = state.player.targetLane;
-  const sameLane = obstacle.lane === playerLane;
+  const laneDistance = Math.abs(state.player.laneOffset - laneToWorld(obstacle.lane));
+  const sameLane = laneDistance < laneSpacing * 0.34;
 
   if (!obstacle.nearMissAwarded && Math.abs(obstacle.z) < 1.6 && !sameLane) {
     obstacle.nearMissAwarded = true;
@@ -590,13 +599,13 @@ function evaluateObstacle(obstacle) {
     return;
   }
 
-  if (obstacle.z > 1.05 || obstacle.z < -0.8) {
+  if (obstacle.z > 1.3 || obstacle.z < -1.0) {
     return;
   }
 
   const player = state.player;
-  const isJumping = player.y > 0.75;
-  const isSliding = player.slideTimer > 0.12;
+  const isJumping = player.y > 0.52;
+  const isSliding = player.slideTimer > 0.08;
   let avoided = false;
 
   if (obstacle.action === "jump" && isJumping) {
@@ -1001,6 +1010,23 @@ function drawObstacle(obstacle) {
   const height = Math.max(12, p.scale * obstacle.height * 58);
   const length = Math.max(10, p.scale * obstacle.length * 60);
   const baseY = p.y;
+  const telegraphAlpha = Math.max(0, Math.min(0.9, 1.2 - obstacle.z / 18));
+
+  if (obstacle.z > 0) {
+    ctx.globalAlpha = 0.16 * telegraphAlpha;
+    ctx.fillStyle = obstacle.kind === "train" ? palette.signalRed : "#ffffff";
+    roundRect(p.x - width * 0.78, baseY - 6, width * 1.56, 10, 8);
+    ctx.fill();
+
+    ctx.globalAlpha = 0.28 * telegraphAlpha;
+    ctx.strokeStyle = palette.signalRed;
+    ctx.lineWidth = Math.max(2, p.scale * 5);
+    ctx.beginPath();
+    ctx.moveTo(p.x - width * 0.7, baseY - height - 14);
+    ctx.lineTo(p.x + width * 0.7, baseY - height - 14);
+    ctx.stroke();
+    ctx.globalAlpha = 1;
+  }
 
   if (obstacle.kind === "train") {
     ctx.fillStyle = obstacle.color;
@@ -1014,6 +1040,12 @@ function drawObstacle(obstacle) {
     ctx.fill();
     ctx.fillStyle = "rgba(0,0,0,0.16)";
     ctx.fillRect(p.x - width * 0.88, baseY, width * 1.76, length * 0.24);
+    ctx.strokeStyle = palette.signalRed;
+    ctx.lineWidth = Math.max(2, p.scale * 7);
+    ctx.beginPath();
+    ctx.moveTo(p.x - width * 0.7, baseY - height * 0.45);
+    ctx.lineTo(p.x + width * 0.7, baseY - height * 0.45);
+    ctx.stroke();
     return;
   }
 
@@ -1033,9 +1065,24 @@ function drawObstacle(obstacle) {
 
   roundRect(p.x - width / 2, baseY - height, width, height, 10);
   ctx.fill();
+  ctx.strokeStyle = obstacle.kind === "barrierHigh" ? palette.signalRed : "rgba(0,0,0,0.22)";
+  ctx.lineWidth = Math.max(2, p.scale * 4);
+  ctx.stroke();
   if (obstacle.kind === "barrierLow") {
     ctx.fillStyle = palette.lowObstacle;
     ctx.fillRect(p.x - width / 2, baseY - height * 0.68, width, height * 0.16);
+    ctx.fillStyle = palette.signalRed;
+    ctx.fillRect(p.x - width / 2, baseY - height * 0.38, width, height * 0.12);
+  }
+  if (obstacle.kind === "barrierHigh") {
+    ctx.fillStyle = palette.signalRed;
+    ctx.fillRect(p.x - width / 2, baseY - height * 0.78, width, height * 0.12);
+    ctx.fillStyle = "rgba(255,255,255,0.92)";
+    ctx.fillRect(p.x - width / 2, baseY - height * 0.52, width, height * 0.08);
+  }
+  if (obstacle.kind === "crate") {
+    ctx.fillStyle = "rgba(255,255,255,0.36)";
+    ctx.fillRect(p.x - width * 0.32, baseY - height * 0.78, width * 0.64, height * 0.1);
   }
 }
 
